@@ -9,7 +9,7 @@ Single page apps have the following needs:
 * URL routing - when the page loads, different code should fire based on the URL, possibly with parameters
 * Composable layouts - single page apps typically render layouts composed of smaller views
 * Lifecycle support - single page apps must take care to avoid memory leaks.  view code may register event handlers or
-  event subscriptions that must be cleaned up with the view is destroyed.
+  event subscriptions that must be cleaned up when the view is destroyed.
 * Lazy loading - large apps contain dozens or hundreds of views, many of which the user will never invoke.  ideally view
   code should be lazily loaded based on user activity.
 
@@ -31,6 +31,18 @@ Tyson attempts to address these needs by bundling support for these concepts:
 * Knockout.js 
 * Flatiron Director - although the router is plugable
 * Either require.js or $script.js - the loader is also pluggable, so other loaders could be supported
+
+There are *no* transitive dependencies.  A complete Tyson app only needs 4 .js files:
+
+* a script loader. either:
+  * require.js
+  * script.js
+* knockout.js
+* director.js
+* tyson.js
+
+jQuery is used in the examples to lazy load external HTML files, but that code is external to tyson.js and
+completely optional.
 
 ## Example
 
@@ -121,6 +133,26 @@ define(["knockout"], function(ko) {
 
 ### boundToDOM property
 
+Tyson will set a boolean property `boundToDOM` on your ViewModel instances that indicates whether the ViewModel is bound to the DOM
+by Knockout. While callback hooks could be used to track this, I felt that this piece of state was important enough to inject in all
+cases.
+
+The rationale is that JS code frequently kicks off AJAX requests that result in DOM updates upon completion.  The callback function
+will retain a reference to the view model, but that view model could have been removed from the DOM while the AJAX request was in 
+progress.
+
+`boundToDOM` provides a convenient way to verify that the ViewModel is still bound.  For example:
+
+```javascript
+    // in a ViewModel:
+    me.submit = function() {
+    	$.get("/some/url", function(data) {
+    		if (me.boundToDOM) {
+    			// ok to proceed - do something with data
+    		}
+		});
+    };
+```
 
 ## Supported loaders
 
@@ -131,3 +163,8 @@ Tyson supports AMD.  See `examples/app-requirejs.html`
 ### $script.js
 
 $script.js is a lightweight script loader.  See `examples/app-scriptjs.html`
+
+## License
+
+MIT.  See LICENSE file for details.
+

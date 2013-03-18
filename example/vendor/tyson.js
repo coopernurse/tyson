@@ -27,37 +27,26 @@ var nextId = function() {
 	return idCounter + "-tyson-id";
 };
 
-var cleanBindingForElement = function(el) {
-	var binding = bindingsById[el._tysonId];
-
-	if (binding) {
-		cleanBinding(binding);
-	}
-	else if (el._tysonId) {
-		trace("tyson: cleanBindingForElement no binding found for el: " + el + " el._tysonId=" + el._tysonId);
-	}
-};
-
 var cleanBinding = function(binding) {
-	var childComponent, el, child;
+	var i, childComponent, el, child;
 	trace("tyson: cleanBinding start id=" + binding.id);
 
 	if (binding.vm.childComponents) {
-		for (childComponent in binding.vm.childComponents) {
-			if (binding.vm.childComponents.hasOwnProperty(childComponent)) {
-				el = binding.vm.childComponents[childComponent];
+		for (i = 0; i < binding.vm.childComponents.length; i += 1) {
+			childComponent = binding.vm.childComponents[i];
+			el = childComponent.el;
+			if (tyson.nodeBound(el)) {
 				child = bindingsById[el._tysonId];
-				if (child) {
-					if (binding.vm.preUnbindChild) {
-						binding.vm.preUnbindChild({ component: childComponent, vm: child.vm, el: child.el });
-					}
 
-					trace("tyson: cleaningChildBinding parent=" + binding.id + " child=" + child.id);
-					cleanBinding(child);
+				if (binding.vm.preUnbindChild) {
+					binding.vm.preUnbindChild({ component: childComponent, vm: child.vm, el: child.el });
+				}
 
-					if (binding.vm.postUnbindChild) {
-						binding.vm.postUnbindChild({ component: childComponent, vm: child.vm, el: child.el });
-					}
+				trace("tyson: cleaningChildBinding parent=" + binding.id + " child=" + child.id);
+				cleanBinding(child);
+
+				if (binding.vm.postUnbindChild) {
+					binding.vm.postUnbindChild({ component: childComponent, vm: child.vm, el: child.el });
 				}
 			}
 		}
@@ -70,6 +59,8 @@ var cleanBinding = function(binding) {
 	binding.vm.boundToDOM = false;
 
 	tyson.ko.cleanNode(binding.el);
+	binding.el.innerHTML = "";
+	delete binding.el["_tysonId"];
 	delete bindingsById[binding.id];
 
 	if (binding.vm.postUnbind) {
@@ -124,6 +115,23 @@ tyson.start = function(opts, callback) {
 	}
 };
 
+tyson.nodeBound = function(el) {
+	return (el && el._tysonId && bindingsById[el._tysonId]);
+};
+
+tyson.cleanNode = function(el) {
+	if (el) {
+		var binding = bindingsById[el._tysonId];
+
+		if (binding) {
+			cleanBinding(binding);
+		}
+		else if (el._tysonId) {
+			trace("tyson: cleanNode no binding found for el: " + el + " el._tysonId=" + el._tysonId);
+		}
+	}
+};
+
 tyson.bindComponent = function(componentName, elToBindTo, params, onDone) {
 
 	if (!componentName) {
@@ -137,7 +145,7 @@ tyson.bindComponent = function(componentName, elToBindTo, params, onDone) {
 	trace("tyson: bindComponent start: " + componentName);
 
 	loadComponent(componentName, function(component) {
-		var childComponent, children, vm, binding, id = nextId();
+		var i, childComponent, children, vm, binding, id = nextId();
 
 		if (!component['viewModel']) {
 			throw new Error("component name=" + componentName + " does not have a viewModel");
@@ -146,7 +154,7 @@ tyson.bindComponent = function(componentName, elToBindTo, params, onDone) {
 			throw new Error("component name=" + componentName + " does not have html");
 		}
 
-		cleanBindingForElement(elToBindTo);
+		tyson.cleanNode(elToBindTo);
 
 		elToBindTo.innerHTML = component.html;
 		elToBindTo._tysonId  = id;
@@ -169,12 +177,13 @@ tyson.bindComponent = function(componentName, elToBindTo, params, onDone) {
 
 		if (vm.childComponents) {
 			children = [ ];
-			for (childComponent in vm.childComponents) {
-				if (vm.childComponents.hasOwnProperty(childComponent)) {
-					trace("tyson: child: " + childComponent + " el: " + vm.childComponents[childComponent]);
-					tyson.bindComponent(childComponent, vm.childComponents[childComponent], [], function(childBinding) {
+			for (i = 0; i < vm.childComponents.length; i += 1) {
+				childComponent = vm.childComponents[i];
+				if (childComponent.component) {
+					trace("tyson: child: " + childComponent.component + " el: " + childComponent.el);
+					tyson.bindComponent(childComponent.component, childComponent.el, [], function(childBinding) {
 						if (vm.postBindChild) {
-							vm.postBindChild({ component: childComponent, vm: childBinding.vm, el: childBinding.el });
+							vm.postBindChild({ component: childComponent.component, vm: childBinding.vm, el: childBinding.el });
 						}
 					});
 				}
