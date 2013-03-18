@@ -1,0 +1,74 @@
+<html>
+	<head>
+		<title>tyson example - using require.js loader</title>
+	</head>
+	<body>
+
+		<div id="root"></div>
+
+		<script type="text/javascript" src="vendor/require.min.js"></script>
+		<script type="text/javascript">
+			require.config({
+			    paths: {
+			    	"jquery"   : "vendor/jquery-1.9.1.min",
+					"knockout" : "vendor/knockout-2.2.1",
+				    "director" : "vendor/director.min",
+				    "tyson"    : "vendor/tyson"
+				},
+				shim : {
+					"director" : {
+			            exports : "Router"
+			        }
+				}
+			});
+
+			// relative path to our components
+			var componentPath = "src/components-requirejs/";
+
+			require(["jquery", "tyson"], function($, $tyson) {
+
+				// start tyson app
+				$tyson.start({
+					// element to anchor the app to
+					rootEl : document.getElementById("root"),
+
+					// trace is off by default, but if you set to true, then 
+					// verbose debug logging will go to console
+					trace : true,
+
+					// provide a function that will load a component by name
+					// this lets you implement whatever directory layout you like
+					// 
+					// this example is a simple implementation that supports optionally
+					// defining the component HTML in a separate .html file
+					loader : function(componentName, callback) {
+						var url = componentPath + componentName;
+						require([url], function(component) {
+							// if the component defines its html in the JS file we're done
+							if (component['html']) {
+								callback(component);
+							}
+							// otherwise we need to load the HTML for the component separately
+							else {
+								url = componentPath + componentName + ".html";
+								$.get(url, function(html) {
+									component.html = html;
+									callback(component);
+								});
+							}
+						});
+					},
+					router : $tyson.director({
+						"root"   : "/login",
+						"routes" : {
+							"/home/?([^/]+)?/?([^/]+)?/?.*" : "HomePage",
+							"/login"  : "LoginPage",
+						}
+					})
+				});
+
+			});
+
+		</script>
+	</body>
+</html>
