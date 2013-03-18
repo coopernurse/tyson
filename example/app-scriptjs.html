@@ -1,71 +1,71 @@
 <html>
-	<head>
-		<title>tyson example - using script.js loader</title>
-	</head>
-	<body>
+    <head>
+        <title>tyson example - using script.js loader</title>
+    </head>
+    <body>
 
-		<div id="root"></div>
+        <div id="root"></div>
 
-		<script type="text/javascript" src="vendor/script.min.js"></script>
-		<script type="text/javascript">
-		    // core JS dependencies to load when our app starts
-			var corelibs = [
-				"vendor/jquery-1.9.1.min.js",
-				"vendor/knockout-2.2.1.js",
-				"vendor/director.min.js",
-				"vendor/tyson.js"
-			];
+        <script type="text/javascript" src="vendor/script.min.js"></script>
+        <script type="text/javascript">
+            // core JS dependencies to load when our app starts
+            var corelibs = [
+                "vendor/jquery-1.9.1.min.js",
+                "vendor/knockout-2.2.1.js",
+                "vendor/director.min.js",
+                "vendor/tyson.js"
+            ];
 
-			// relative path to our components
-			var componentPath = "src/components-scriptjs/";
+            // relative path to our components
+            var componentPath = "src/components-scriptjs/";
 
-			// load core dependencies with script.js
-			$script(corelibs, "corelibs");
+            // load core dependencies with script.js
+            $script(corelibs, "corelibs");
 
-			$script.ready("corelibs", function() {
+            $script.ready("corelibs", function() {
 
-				// start tyson app
-				$tyson.start({
-					// element to anchor the app to
-					rootEl : document.getElementById("root"),
+                // start tyson app
+                $tyson.start({
+                    // element to anchor the app to
+                    rootEl : document.getElementById("root"),
 
-					// provide a function that will load a component by name
-					// this lets you implement whatever directory layout you like
-					// 
-					// this example is a simple implementation that supports optionally
-					// defining the component HTML in a separate .html file
-					loader : function(componentName, callback) {
-						var url = componentPath + componentName + ".js";
-						$script(url, function() {
-							// each component will register with the $tyson.components
-							// registry when it loads.
-							var component = $tyson.component(componentName);
+                    // provide a function that will load a component by name
+                    // this lets you implement whatever directory layout you like
+                    // 
+                    // this example is a simple implementation that supports optionally
+                    // defining the component HTML in a separate .html file
+                    loader : function(componentName, callback) {
+                        var url = componentPath + componentName + ".js";
+                        $script(url, function() {
+                            // each component will register with the $tyson.components
+                            // registry when it loads.
+                            var component = $tyson.component(componentName);
 
-							// if the component defines its html in the JS file we're done
-							if (component['html']) {
-								callback(component);
-							}
-							// otherwise we need to load the HTML for the component separately
-							else {
-								url = componentPath + componentName + ".html";
-								$.get(url, function(html) {
-									component.html = html;
-									callback(component);
-								});
-							}
-						});
-					},
-					router : $tyson.director({
-						"root"   : "/login",
-						"routes" : {
-							"/home/?([^/]+)?/?([^/]+)?/?.*" : "HomePage",
-							"/login"  : "LoginPage",
-						}
-					})
-				});
+                            // if the component defines its html in the JS file we're done
+                            if (component['html']) {
+                                callback(component);
+                            }
+                            // otherwise we need to load the HTML for the component separately
+                            else {
+                                url = componentPath + componentName + ".html";
+                                $.get(url, function(html) {
+                                    component.html = html;
+                                    callback(component);
+                                });
+                            }
+                        });
+                    },
+                    router : $tyson.director({
+                        "root"   : "/login",
+                        "routes" : {
+                            "/home/?([^/]+)?/?([^/]+)?/?.*" : "HomePage",
+                            "/login"  : "LoginPage",
+                        }
+                    })
+                });
 
-			});
+            });
 
-		</script>
-	</body>
+        </script>
+    </body>
 </html>
