@@ -35,7 +35,7 @@ var cleanBinding = function(binding) {
         for (i = 0; i < binding.vm.childComponents.length; i += 1) {
             childComponent = binding.vm.childComponents[i];
             el = childComponent.el;
-            if (tyson.nodeBound(el)) {
+            if (tyson.bound(el)) {
                 child = bindingsById[el._tysonId];
 
                 if (binding.vm.preUnbindChild) {
@@ -60,7 +60,7 @@ var cleanBinding = function(binding) {
 
     tyson.ko.cleanNode(binding.el);
     binding.el.innerHTML = "";
-    delete binding.el["_tysonId"];
+    delete binding.el._tysonId;
     delete bindingsById[binding.id];
 
     if (binding.vm.postUnbind) {
@@ -115,11 +115,11 @@ tyson.start = function(opts, callback) {
     }
 };
 
-tyson.nodeBound = function(el) {
+tyson.bound = function(el) {
     return (el && el._tysonId && bindingsById[el._tysonId]);
 };
 
-tyson.cleanNode = function(el) {
+tyson.clean = function(el) {
     if (el) {
         var binding = bindingsById[el._tysonId];
 
@@ -127,48 +127,48 @@ tyson.cleanNode = function(el) {
             cleanBinding(binding);
         }
         else if (el._tysonId) {
-            trace("tyson: cleanNode no binding found for el: " + el + " el._tysonId=" + el._tysonId);
+            trace("tyson: clean no binding found for el: " + el + " el._tysonId=" + el._tysonId);
         }
     }
 };
 
-tyson.bindComponent = function(componentName, elToBindTo, params, onDone) {
+tyson.bind = function(el, componentName, params, onDone) {
 
     if (!componentName) {
-        throw new Error("tyson.bindComponent: componentName is not defined!");
+        throw new Error("tyson.bind: componentName is not defined!");
     }
 
-    if (!elToBindTo) {
-        throw new Error("tyson.bindComponent: elToBindTo is not defined for componentName: " + componentName);
+    if (!el) {
+        throw new Error("tyson.bind: el is not defined! (componentName=" + componentName + ")");
     }
 
-    trace("tyson: bindComponent start: " + componentName);
+    trace("tyson: bind start: " + componentName);
 
     loadComponent(componentName, function(component) {
-        var i, childComponent, children, vm, binding, id = nextId();
+        var i, childComponent, children, vm, binding, postBindCallback, id = nextId();
 
-        if (!component['viewModel']) {
+        if (!component.viewModel) {
             throw new Error("component name=" + componentName + " does not have a viewModel");
         }
-        if (!component['html']) {
+        if (!component.html) {
             throw new Error("component name=" + componentName + " does not have html");
         }
 
-        tyson.cleanNode(elToBindTo);
+        tyson.clean(el);
 
-        elToBindTo.innerHTML = component.html;
-        elToBindTo._tysonId  = id;
+        el.innerHTML = component.html;
+        el._tysonId  = id;
 
         vm = component.viewModel.apply(component, params);
 
         binding = {
             id : id,
             vm : vm,
-            el : elToBindTo
+            el : el
         };
         bindingsById[id] = binding;
 
-        tyson.ko.applyBindings(vm, elToBindTo);
+        tyson.ko.applyBindings(vm, el);
         vm.boundToDOM = true;
 
         if (vm.postBind) {
@@ -177,21 +177,24 @@ tyson.bindComponent = function(componentName, elToBindTo, params, onDone) {
 
         if (vm.childComponents) {
             children = [ ];
+
+            postBindCallback = function(childBinding) {
+                if (vm.postBindChild) {
+                    vm.postBindChild({ component: childComponent.component, vm: childBinding.vm, el: childBinding.el });
+                }
+            };
+
             for (i = 0; i < vm.childComponents.length; i += 1) {
                 childComponent = vm.childComponents[i];
                 if (childComponent.component) {
                     trace("tyson: child: " + childComponent.component + " el: " + childComponent.el);
-                    tyson.bindComponent(childComponent.component, childComponent.el, [], function(childBinding) {
-                        if (vm.postBindChild) {
-                            vm.postBindChild({ component: childComponent.component, vm: childBinding.vm, el: childBinding.el });
-                        }
-                    });
+                    tyson.bind(childComponent.el, childComponent.component, [], postBindCallback);
                 }
             }
         }
 
         if (Object && Object.keys && JSON) {
-            trace("tyson: bindComponent  done: " + componentName + " id: " + id + " bindingsById.keys: " + JSON.stringify(Object.keys(bindingsById)));
+            trace("tyson: bind  done: " + componentName + " id: " + id + " bindingsById.keys: " + JSON.stringify(Object.keys(bindingsById)));
         }
 
         if (onDone) {
@@ -215,7 +218,7 @@ tyson.director = function(config) {
                         decoded.push(decodeURIComponent(arguments[i]));
                     }
                 }
-                tyson.bindComponent(componentName, tyson.rootEl, decoded);
+                tyson.bind(tyson.rootEl, componentName, decoded);
             };
         };
 
@@ -236,10 +239,54 @@ tyson.director = function(config) {
         }
 
         router.init(config.root);
-    }
+    };
 
     return {
         start: onStart
+    };
+};
+
+tyson.requirejsLoader = function(getFn, componentPath) {
+    return function(componentName, callback) {
+        var url = componentPath + componentName;
+        require([url], function(component) {
+            // if the component defines its html in the JS file we're done
+            if (component.html) {
+                callback(component);
+            }
+            // otherwise we need to load the HTML for the component separately
+            else {
+                url = componentPath + componentName + ".html";
+                getFn(url, function(html) {
+                    component.html = html;
+                    callback(component);
+                });
+            }
+        });
+    };
+};
+
+tyson.scriptjsLoader = function(getFn, componentPath) {
+    return function(componentName, callback) {
+        var url = componentPath + componentName + ".js";
+        $script(url, function() {
+            // each component will register with the $tyson.components
+            // registry when it loads.
+            var component = tyson.component(componentName);
+
+            // if the component defines its html in the JS file we're done
+            if (component.html) {
+                callback(component);
+            }
+            // otherwise we need to load the HTML for the component separately
+            else {
+                url = componentPath + componentName + ".html";
+                getFn(url, function(html) {
+                    component.html = html;
+                    callback(component);
+                });
+            }
+        });
     };
 };
 

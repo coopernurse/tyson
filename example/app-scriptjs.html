@@ -34,27 +34,9 @@
                     // 
                     // this example is a simple implementation that supports optionally
                     // defining the component HTML in a separate .html file
-                    loader : function(componentName, callback) {
-                        var url = componentPath + componentName + ".js";
-                        $script(url, function() {
-                            // each component will register with the $tyson.components
-                            // registry when it loads.
-                            var component = $tyson.component(componentName);
-
-                            // if the component defines its html in the JS file we're done
-                            if (component['html']) {
-                                callback(component);
-                            }
-                            // otherwise we need to load the HTML for the component separately
-                            else {
-                                url = componentPath + componentName + ".html";
-                                $.get(url, function(html) {
-                                    component.html = html;
-                                    callback(component);
-                                });
-                            }
-                        });
-                    },
+                    loader : $tyson.scriptjsLoader($.get, componentPath),
+                        
+                    // configure routes
                     router : $tyson.director({
                         "root"   : "/login",
                         "routes" : {

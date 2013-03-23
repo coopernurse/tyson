@@ -31,11 +31,11 @@ define(["jquery", "tyson"], function($, $tyson) {
 				childComponents : [ login, footer ],
 
 				toggleFooter : function() {
-					if ($tyson.nodeBound(footer.el)) {
-						$tyson.cleanNode(footer.el);
+					if ($tyson.bound(footer.el)) {
+						$tyson.clean(footer.el);
 					}
 					else {
-						$tyson.bindComponent("partial/Footer", footer.el);
+						$tyson.bind(footer.el, "partial/Footer");
 					}
 				},
 
