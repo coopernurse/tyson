@@ -119,7 +119,7 @@ tyson.bound = function(el) {
     return (el && el._tysonId && bindingsById[el._tysonId]);
 };
 
-tyson.clean = function(el) {
+tyson.unbind = function(el) {
     if (el) {
         var binding = bindingsById[el._tysonId];
 
@@ -154,7 +154,7 @@ tyson.bind = function(el, componentName, params, onDone) {
             throw new Error("component name=" + componentName + " does not have html");
         }
 
-        tyson.clean(el);
+        tyson.unbind(el);
 
         el.innerHTML = component.html;
         el._tysonId  = id;

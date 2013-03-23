@@ -32,7 +32,7 @@
 
 				toggleFooter : function() {
 					if ($tyson.bound(footer.el)) {
-						$tyson.clean(footer.el);
+						$tyson.unbind(footer.el);
 					}
 					else {
 						$tyson.bind(footer.el, "partial/Footer");
